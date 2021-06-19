@@ -1,0 +1,23 @@
+server:
+  port: 7777
+spring:
+  config:
+    use-legacy-processing: true
+  jpa:
+     open-in-view: false
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+    content-type: text/html
+  h2:
+    console:
+        enabled: true
+        path: /h2-console
+management:
+   endpoints:
+      web:
+         base-path: /manage
+         exposure:
+            include: health,info,env,mappings,refresh,loggers,configInspector,configprops,actuators
+logging.config: classpath:log4j2-spring.xml
