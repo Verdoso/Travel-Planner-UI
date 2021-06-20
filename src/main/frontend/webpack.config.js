@@ -24,7 +24,7 @@ module.exports = {
   ],
   output: {
     path: path.resolve(APP_PATH, 'dist'),
-    publicPath: '/travel-planners/dist/',
+    publicPath: '/travel-planner/dist/',
     filename: '[name]_build.js'
   },
   module: {
