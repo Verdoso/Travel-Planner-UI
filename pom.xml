@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>es.uib.owu</groupId>
   <artifactId>travel-planner-ui</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.3</version>
   <description>Tauler de la UIB</description>
 
   <parent>
@@ -14,7 +14,7 @@
 
   <scm>
     <developerConnection>scm:git:https://github.com/Verdoso/Travel-Planner-UI</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v0.0.3</tag>
   </scm>
 
   <properties>
