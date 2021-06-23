@@ -1,8 +1,8 @@
 package org.greeneyed.tplanner.controller.rest;
 
 import org.greeneyed.tplanner.controller.BasicController;
-import org.greeneyed.tplanner.services.AirportFinderClient;
 import org.greeneyed.tplanner.services.airportf.APIAirportsResponse;
+import org.greeneyed.tplanner.services.airportf.AirportFinderClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

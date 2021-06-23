@@ -24,9 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 public class CommunicationsConfiguration {
 
     public static final String AIRPORT_FINDER_REST_TEMPLATE = "AIRPORT_FINDER_REST_TEMPLATE";
+    public static final String HOTEL_FINDER_REST_TEMPLATE = "HOTEL_FINDER_REST_TEMPLATE";
 
     @Value("${airport-finder.address:http://localhost:9999}")
     String airportFinderAddress;
+
+    @Value("${hotel-finder.address:http://localhost:8888}")
+    String hotelFinderAddress;
 
     @Bean
     LoggingClientHttpRequestInterceptor loggingClientHttpRequestInterceptor() {
@@ -34,11 +38,21 @@ public class CommunicationsConfiguration {
     }
 
     @Bean(name = AIRPORT_FINDER_REST_TEMPLATE)
-    public RestTemplate osrRestTemplate(RestTemplateBuilder builder) {
+    public RestTemplate airportFinderTemplate(RestTemplateBuilder builder) {
         log.info("Configuring Airport Finder remote access to {}", airportFinderAddress);
         return builder.additionalInterceptors(Arrays.asList(loggingClientHttpRequestInterceptor()))
                 .requestFactory(this::getClientHttpRequestFactory)
-                .rootUri(airportFinderAddress).build();
+                .rootUri(airportFinderAddress)
+                .build();
+    }
+
+    @Bean(name = HOTEL_FINDER_REST_TEMPLATE)
+    public RestTemplate hotelFinderRestTemplate(RestTemplateBuilder builder) {
+        log.info("Configuring Hotel Finder remote access to {}", hotelFinderAddress);
+        return builder.additionalInterceptors(Arrays.asList(loggingClientHttpRequestInterceptor()))
+                .requestFactory(this::getClientHttpRequestFactory)
+                .rootUri(hotelFinderAddress)
+                .build();
     }
 
     private ClientHttpRequestFactory getClientHttpRequestFactory() {
@@ -55,5 +69,5 @@ public class CommunicationsConfiguration {
               .build();
             //@formatter:on
         return new BufferingClientHttpRequestFactory(new HttpComponentsClientHttpRequestFactory(client));
-      }
+    }
 }
