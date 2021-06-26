@@ -27,7 +27,6 @@
     <commons-text.version>1.4</commons-text.version>
     <org.mapstruct.version>1.4.1.Final</org.mapstruct.version>
     <m2e.apt.activation>jdt_apt</m2e.apt.activation>
-    <httpclient.version>4.5.13</httpclient.version>
   </properties>
 
   <dependencies>
@@ -123,7 +122,6 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>${httpclient.version}</version>
     </dependency>
 
     <!-- FrontEnd -->
