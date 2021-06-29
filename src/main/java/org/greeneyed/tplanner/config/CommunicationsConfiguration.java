@@ -25,12 +25,16 @@ public class CommunicationsConfiguration {
 
     public static final String AIRPORT_FINDER_REST_TEMPLATE = "AIRPORT_FINDER_REST_TEMPLATE";
     public static final String HOTEL_FINDER_REST_TEMPLATE = "HOTEL_FINDER_REST_TEMPLATE";
+    public static final String FLIGHT_FINDER_REST_TEMPLATE = "FLIGHT_FINDER_REST_TEMPLATE";
 
     @Value("${airport-finder.address:http://localhost:9999}")
     String airportFinderAddress;
 
     @Value("${hotel-finder.address:http://localhost:8888}")
     String hotelFinderAddress;
+
+    @Value("${flight-finder.address:http://localhost:3333}")
+    String flightFinderAddress;
 
     @Bean
     LoggingClientHttpRequestInterceptor loggingClientHttpRequestInterceptor() {
@@ -52,6 +56,15 @@ public class CommunicationsConfiguration {
         return builder.additionalInterceptors(Arrays.asList(loggingClientHttpRequestInterceptor()))
                 .requestFactory(this::getClientHttpRequestFactory)
                 .rootUri(hotelFinderAddress)
+                .build();
+    }
+
+    @Bean(name = FLIGHT_FINDER_REST_TEMPLATE)
+    public RestTemplate flightFinderRestTemplate(RestTemplateBuilder builder) {
+        log.info("Configuring Flight Finder remote access to {}", flightFinderAddress);
+        return builder.additionalInterceptors(Arrays.asList(loggingClientHttpRequestInterceptor()))
+                .requestFactory(this::getClientHttpRequestFactory)
+                .rootUri(flightFinderAddress)
                 .build();
     }
 

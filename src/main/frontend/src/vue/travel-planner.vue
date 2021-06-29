@@ -61,6 +61,7 @@
                         v-model="to"
                         :first-day-of-week="1"
                         :min-date="from"
+                        :focused-date="from"
                         placeholder="Arrival date"
                         icon="calendar-today"
                         trap-focus
@@ -77,48 +78,28 @@
               </div>
             </div>
             <div class="columns">
-              <div class="column is-one-quarter">
-                <!-- Search by IP -->
-                <b-field label="Base IP" label-position="on-border">
-                    <b-input placeholder="IP..." type="search" v-model="publicIp"></b-input>
-                    <p class="control">
-                        <b-button
-                          class="button
-                          is-primary"
-                          :loading="isFinding"
-                          @click="findClosestAirports"
-                          >Find closest airports</b-button>
-                    </p>
-                </b-field>
-              </div>
-              <div class="column is-one-quarter">
-                <b-field v-if="this.closestAirportsInfo" label="From" horizontal>
-                    <b-select placeholder="Airport" icon="airplane-takeoff" v-model="selectedAirport">
-                        <option
-                          v-for="distance in this.closestAirportsInfo.distances"
-                          :value="distance.airport.iataFaaCode"
-                        >
-                          ({{ distance.airport.iataFaaCode }}) - <strong>{{ distance.airport.name }}</strong> (at {{ distance.distance.kilometers }}Km)
-                        </option>
-                    </b-select>
-                </b-field>
-              </div>
-              <div class="column is-half">
+              <div class="column">
                 <div style="margin-bottom: 1em;">
                   Plans for {{ adults }} adults
                   <span v-if="children>0">
                     and {{ children }} children
                   </span>
                   <span v-if="selectedDestinationName">
-                    going to {{ selectedDestinationName }}
+                    going to <strong>{{ selectedDestinationName }}</strong>
                   </span>
                   <span v-if="from">
-                    departing {{ $moment(from).format('L') }}
+                    departing <strong>{{ $moment(from).format('L') }}</strong>
                     <span v-if="selectedAirport">
-                      from {{ selectedAirport }}
+                      from <strong>{{ selectedAirport }}</strong>
+                    </span>
+                    <span v-if="selectedDestinationAirport">
+                      landing at <strong>{{ selectedDestinationAirport }}</strong>
+                    </span>
+                    <span v-if="selectedHotel">
+                      staying at the hotel <strong>{{ selectedHotel.name }} in {{ selectedHotel.zoneName }} ({{selectedHotel.minRate}}-{{selectedHotel.maxRate}} €)</strong>
                     </span>
                     <span v-if="to">
-                      and comming back {{ $moment(to).format('L') }}
+                      and comming back <strong>{{ $moment(to).format('L') }}</strong>
                     </span>
                   </span>
                 </div>
@@ -141,12 +122,10 @@
                 :per-page="perPage"
                 default-sort="minRate"
                 :default-sort-direction="defaultSortDirection"
+                v-show="availableHotels.length > 0 && !selectedHotel"
                 >
                 <b-table-column field="name" label="Hotel name" width="40%" sortable searchable>
                   <template v-slot="props">
-                    <!--
-                    <b-icon v-if="props.row.visible" icon="eye" type="is-success" />
-                    -->
                     {{ props.row.name }}
                   </template>
                 </b-table-column>
@@ -163,18 +142,86 @@
                   </template>
                 </b-table-column>
 
-                <b-table-column field="minRate" label="Mininum rate" width="10%" sortable>
+                <b-table-column field="minRate" label="Mininum rate" width="5%" sortable>
                   <template v-slot="props">
                     {{ props.row.minRate }}
                   </template>
                 </b-table-column>
 
-                <b-table-column field="maxRate" label="Max rate" width="10%" sortable>
+                <b-table-column field="maxRate" label="Max rate" width="5%" sortable>
                   <template v-slot="props">
                     {{ props.row.maxRate }}
                   </template>
                 </b-table-column>
+
+                <b-table-column field="name" label="Select" width="10%">
+                  <template v-slot="props">
+                    <b-button type="is-info" @click="() => updateSelectedHotel(props.row)">Select this</b-button>
+                  </template>
+                </b-table-column>
             </b-table>
+            <div class="columns" v-if="selectedHotel">
+              <!-- Search by IP
+              <div class="column is-one-quarter">
+                <b-field label="Base IP" label-position="on-border">
+                    <b-input placeholder="IP..." type="search" v-model="publicIp"></b-input>
+                    <p class="control">
+                        <b-button
+                          class="button
+                          is-primary"
+                          :loading="isFinding"
+                          @click="findClosestAirports"
+                          >Find closest airports</b-button>
+                    </p>
+                </b-field>
+              </div>
+               -->
+              <div class="column is-half">
+                <b-field v-if="this.closestAirportsInfo" label="From" horizontal>
+                    <b-select placeholder="Airport" icon="airplane-takeoff" v-model="selectedAirport">
+                        <option
+                          v-for="distance in this.closestAirportsInfo.distances"
+                          :value="distance.airport.iataFaaCode"
+                        >
+                          ({{ distance.airport.iataFaaCode }}) - <strong>{{ distance.airport.name }}</strong> (at {{ distance.distance.kilometers }}Km)
+                        </option>
+                    </b-select>
+                </b-field>
+              </div>
+              <div class="column is-half">
+                <b-field v-if="this.closestDestinationAirportsInfo" label="To" horizontal>
+                    <b-select placeholder="Airport" icon="airplane-landing" v-model="selectedDestinationAirport">
+                        <option
+                          v-for="distance in this.closestDestinationAirportsInfo.distances"
+                          :value="distance.airport.iataFaaCode"
+                        >
+                          ({{ distance.airport.iataFaaCode }}) - <strong>{{ distance.airport.name }}</strong> (at {{ distance.distance.kilometers }}Km)
+                        </option>
+                    </b-select>
+                    <p class="control">
+                      <b-button type="is-info" @click="findFlight">Find a flight!</b-button>
+                    </p>
+                </b-field>
+              </div>
+            </div>
+            <div class="columns" v-if="flightInfo.length > 0">
+              <div class="column is-half">
+                Flight options:
+                <ul>
+                <li v-for="flight in flightInfo":key="flight.id">
+                  <div>
+                    <strong>Departure</strong> from {{ flight.origin }} on {{ $moment(flight.departureDate).format("YYYY-MM-DD") }} at {{ $moment(flight.departureDate).format("hh:ss") }}, travelling with {{ flight.departureCarrier  }}
+                  </div>
+                  <div>
+                    <strong>Return trip</strong> from {{ flight.destination }} on {{ $moment(flight.returnDate).format("YYYY-MM-DD") }} at {{ $moment(flight.returnDate).format("hh:ss") }}, travelling with {{ flight.returnCarrier }}
+                  </div>
+                  <div>
+                    <strong>Total price</strong> {{ flight.minPrice }} €
+                  </div>
+                </li>
+                </ul>
+              </div>
+            </div>
           </div> <!-- End content -->
         </div>
       </div>
@@ -197,6 +244,7 @@
                 isFinding: false,
                 publicIp: null,
                 closestAirportsInfo : null,
+                closestDestinationAirportsInfo : null,
                 from: null,
                 to: null,
                 adults: 2,
@@ -207,9 +255,9 @@
                 isFetchingZones: false,
                 hotelDestinations: [],
                 selectedAirport: null,
+                selectedDestinationAirport: null,
                 isFetchingHotels: false,
-                //availableHotels: []
-                availableHotels: [{"code":725,"name":"Manaus","categoryName":"3 STARS","zoneName":"S'Arenal","latitude":"39.4971850225495","longitude":"2.75442615151405","minRate":300.00,"maxRate":502.68,"rooms":[{"code":"DBT.ST","name":"Double or Twin STANDARD","rates":[{"rateKey":"20210721|20210725|W|1|725|DBT.ST|OP-FIT|HB||1~2~0||N@06~~21818a~-2100678115~N~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000121818a","rateClass":"NOR","net":394.24,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|CG-FIT|RO||1~2~0||N@06~~24813c~1874844477~N~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000124813c","rateClass":"NOR","net":316.72,"boardCode":"RO","boardName":"ROOM ONLY"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|NRF-FIT|BB||1~2~0||N@06~~234145~-1023973571~N~~~NRF~3FB394DCBEBB427162455025708900AAUK00000010000000001234145","rateClass":"NRF","net":325.52,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|CG-PVP|BB||1~2~0||N@06~~2001c2~-1771666455~S~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000125218a","rateClass":"NOR","net":394.82,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|NRF-FIT|HB||1~2~0||N@06~~21818a~1120480951~N~~~NRF~3FB394DCBEBB427162455025708900AAUK0000001000000000121818a","rateClass":"NRF","net":394.24,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|CG-PVPHB|HB||1~2~0||N@06~~20021c~1896000243~S~~~NOR~3FB394DCBEBB427162455025708900AAUK000000100000000012501d9","rateClass":"NOR","net":473.80,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|NRF-PVPHB|HB||1~2~0||N@06~~200201~1777519856~S~~~NRF~3FB394DCBEBB427162455025708900AAUK000000100000000012261c0","rateClass":"NRF","net":448.38,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|OP-FIT|BB||1~2~0||N@06~~234145~49834659~N~~~NOR~3FB394DCBEBB427162455025708900AAUK00000010000000001234145","rateClass":"NOR","net":325.52,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|NRF-PVPBB|BB||1~2~0||N@06~~2321ab~-295446263~S~~~NRF~3FB394DCBEBB427162455025708900AAUK00000010000000001240175","rateClass":"NRF","net":373.64,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|CG-FIT|HB||1~2~0||N@06~~23819e~-916531942~N~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000123819e","rateClass":"NOR","net":414.56,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|CG-FIT|BB||1~2~0||N@06~~218156~-141523584~N~~~NOR~3FB394DCBEBB427162455025708900AAUK00000010000000001218156","rateClass":"NOR","net":342.24,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|OP-FIT|RO||1~2~0||N@06~~20012c~2094027776~N~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000120012c","rateClass":"NOR","net":300.00,"boardCode":"RO","boardName":"ROOM ONLY"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST|NRF-FIT|RO||1~2~0||N@06~~20012c~1020219546~N~~~NRF~3FB394DCBEBB427162455025708900AAUK0000001000000000120012c","rateClass":"NRF","net":300.00,"boardCode":"RO","boardName":"ROOM ONLY"}]},{"code":"DBL.ST","name":"DOUBLE STANDARD","rates":[{"rateKey":"20210721|20210725|W|1|725|DBL.ST|NRF-PVPHB|HB||1~2~0||N@06~~200201~1303753960~S~~~NRF~3FB394DCBEBB427162455025708900AAUK000000100000000012261c0","rateClass":"NRF","net":448.38,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBL.ST|NRF-PVPBB|BB||1~2~0||N@06~~2321ab~-769212159~S~~~NRF~3FB394DCBEBB427162455025708900AAUK00000010000000001240175","rateClass":"NRF","net":373.64,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBL.ST|CG-PVP|BB||1~2~0||N@06~~2001c2~1400200945~S~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000125218a","rateClass":"NOR","net":394.82,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBL.ST|CG-FIT|RO||1~2~0||N@06~~234145~-212631099~N~~~NOR~3FB394DCBEBB427162455025708900AAUK00000010000000001234145","rateClass":"NOR","net":325.52,"boardCode":"RO","boardName":"ROOM ONLY"},{"rateKey":"20210721|20210725|W|1|725|DBL.ST|CG-FIT|BB||1~2~0||N@06~~20415f~-97171544~N~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000120415f","rateClass":"NOR","net":351.04,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBL.ST|CG-FIT|HB||1~2~0||N@06~~2241a7~274685186~N~~~NOR~3FB394DCBEBB427162455025708900AAUK000000100000000012241a7","rateClass":"NOR","net":423.36,"boardCode":"HB","boardName":"HALF BOARD"}]},{"code":"DBT.ST-1","name":"double room woods view 2  adults","rates":[{"rateKey":"20210721|20210725|W|1|725|DBT.ST-1|CG-PVP|BB||1~2~0||N@06~~2001e6~-749635792~S~~~NOR~3FB394DCBEBB427162455025708900AAUK0000001000000000122a1aa","rateClass":"NOR","net":426.42,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST-1|NRF-PVPHB|HB||1~2~0||N@06~~25a215~-751978178~S~~~NRF~3FB394DCBEBB427162455025708900AAUK000000100000000012401d2","rateClass":"NRF","net":466.64,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST-1|NRF-PVPBB|BB||1~2~0||N@06~~2461cd~404108349~S~~~NRF~3FB394DCBEBB427162455025708900AAUK00000010000000001236193","rateClass":"NRF","net":403.54,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|DBT.ST-1|CG-PVPHB|HB||1~2~0||N@06~~200232~-1260107929~S~~~NOR~3FB394DCBEBB427162455025708900AAUK000000100000000012081ed","rateClass":"NOR","net":493.08,"boardCode":"HB","boardName":"HALF BOARD"}]},{"code":"SUI.ST","name":"SUITE STANDARD","rates":[{"rateKey":"20210721|20210725|W|1|725|SUI.ST|CG-FIT|HB||1~2~0||N@06~~2441f6~1137356937~N~~~NOR~3FB394DCBEBB427162455025708900AAUK000000100000000012441f6","rateClass":"NOR","net":502.68,"boardCode":"HB","boardName":"HALF BOARD"},{"rateKey":"20210721|20210725|W|1|725|SUI.ST|CG-FIT|BB||1~2~0||N@06~~2241ae~-250774385~N~~~NOR~3FB394DCBEBB427162455025708900AAUK000000100000000012241ae","rateClass":"NOR","net":430.36,"boardCode":"BB","boardName":"BED AND BREAKFAST"},{"rateKey":"20210721|20210725|W|1|725|SUI.ST|CG-FIT|RO||1~2~0||N@06~~254194~650040652~N~~~NOR~3FB394DCBEBB427162455025708900AAUK00000010000000001254194","rateClass":"NOR","net":404.84,"boardCode":"RO","boardName":"ROOM ONLY"}]}]}],
+                availableHotels: [],
                 isPaginated: true,
                 isPaginationSimple: true,
                 paginationPosition: 'top',
@@ -218,6 +266,8 @@
                 sortIconSize: 'is-small',
                 currentPage: 1,
                 perPage: 10,
+                selectedHotel: null,
+                flightInfo: []
             }
         }
         , mounted() {
@@ -225,12 +275,52 @@
               .get('https://api64.ipify.org?format=json')
               .then(response => {
                 this.publicIp = response.data.ip;
+                this.findClosestAirports();
               })
               .catch(e => {
                 console.error(e);
               });
         }
         , methods: {
+          findFlight() {
+            if(!this.isFinding && this.selectedHotel) {
+              this.isFinding = true;
+              this.flightInfo.splice(0);
+              try {
+                axios
+                  .get('/travel-planner/api/flight/search/'
+                    + this.closestAirportsInfo.distances.filter(distance => distance.airport.iataFaaCode === this.selectedAirport)[0].airport.countryCode
+                    + '/EUR/en-US/'
+                    + this.selectedAirport
+                    + '/'
+                    + this.selectedDestinationAirport
+                    + '/'
+                    + this.$moment(this.from).format('YYYY-MM-DD')
+                    + '/'
+                    + this.$moment(this.to).format('YYYY-MM-DD')
+                    )
+                  .then(response => {
+                    response.data.forEach(flight => {
+                      this.flightInfo.push(flight);
+                    });
+                    if(this.flightInfo.length===0) {
+                      this.$buefy.toast.open({
+                          duration: 2000,
+                          message: `No flight found for the given dates and airports`,
+                          position: 'is-bottom',
+                          type: 'is-danger'
+                      });
+                    }
+                  })
+                  .catch(e => {
+                    console.error(e);
+                  });
+              } finally {
+                this.isFinding = false;
+                this.print();
+              }
+            }
+          },
           getAsyncZones: _.debounce(function (name) {
               this.isFetchingZones = true
               if (!name.length || name.length < 4) {
@@ -260,18 +350,43 @@
               });
               this.isFetchingZones = false
           }, 300),
+          updateSelectedHotel (option) {
+            this.selectedHotel = option;
+            if(!this.isFinding && this.selectedHotel) {
+              this.isFinding = true;
+              try {
+                axios
+                  .get('/travel-planner/api/airport/by_position/', {params: {latitude : this.selectedHotel.latitude, longitude : this.selectedHotel.longitude } } )
+                  .then(response => {
+                    this.closestDestinationAirportsInfo = response.data;
+                    this.selectedDestinationAirport = this.closestDestinationAirportsInfo.distances[0].airport.iataFaaCode;
+                  })
+                  .catch(e => {
+                    console.error(e);
+                  });
+              } finally {
+                this.isFinding = false;
+              }
+            }
+          },
           updateSelectedZone (option) {
             this.selectedDestinationName = option.destination;
             this.selectedDestinationCode = option.code;
+            this.availableHotels.splice(0);
+            this.closestDestinationAirportsInfo = null
+            this.selectedDestinationAirport = null;
+            this.selectedHotel = null;
+            this.flightInfo.splice(0);
           },
           findClosestAirports () {
             if(!this.isFinding && this.publicIp) {
               this.isFinding = true;
               try {
                 axios
-                  .get('/travel-planner/api/airport/', {params: {ip : this.publicIp } } )
+                  .get('/travel-planner/api/airport/by_ip/', {params: {ip : this.publicIp } } )
                   .then(response => {
                     this.closestAirportsInfo = response.data;
+                    this.selectedAirport = this.closestAirportsInfo.distances[0].airport.iataFaaCode;
                   })
                   .catch(e => {
                     console.error(e);
@@ -283,11 +398,11 @@
           },
           findAvailableHotels () {
             this.availableHotels.splice(0);
+            this.flightInfo.splice(0);
             this.isFetchingHotels = true
-            console.error('Finding hotels...');
+            console.debug('Finding hotels...');
             if (this.from && this.to && this.selectedDestinationCode) {
               limiter.schedule(async () => {
-                console.error('Launching request');
                 await axios
                   .get('/travel-planner/api/hotel/availability',{ params: {
                     checkIn: this.$moment(this.from).format("YYYY-MM-DD")
@@ -297,7 +412,6 @@
                     , numChildren: this.children
                   } })
                   .then(response => {
-                    console.error('Processing response');
                     this.availableHotels.splice(0);
                     response.data.forEach(hotel => {
                       this.availableHotels.push(hotel);

@@ -19,8 +19,14 @@ public class AirportFinderController {
     private static final ResponseEntity<APIAirportsResponse> BAD_REQUEST = ResponseEntity.badRequest().build();
     private final AirportFinderClient airportFinderClient;
 
-    @GetMapping()
+    @GetMapping(path = "by_ip/")
     public ResponseEntity<APIAirportsResponse> findClosestAirports(@RequestParam(name = "ip") String ip) {
         return airportFinderClient.getClosestAirports(ip).map(ResponseEntity::ok).orElse(BAD_REQUEST);
+    }
+
+    @GetMapping(path = "by_position/")
+    public ResponseEntity<APIAirportsResponse> findClosestDestinationAirports(
+            @RequestParam(name = "latitude") String latitude, @RequestParam(name = "longitude") String longitude) {
+        return airportFinderClient.getClosestAirports(latitude, longitude).map(ResponseEntity::ok).orElse(BAD_REQUEST);
     }
 }

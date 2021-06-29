@@ -37,4 +37,20 @@ public class AirportFinderClient {
         }
         return Optional.ofNullable(airportsResponse);
     }
+
+    @Measured
+    public Optional<APIAirportsResponse> getClosestAirports(final String latitude, final String longitude) {
+        APIAirportsResponse airportsResponse = null;
+        try {
+            log.debug("Obtaining closest airport for latitude: {}, longitude: {}", latitude, longitude);
+            airportsResponse = restTemplate
+                    .getForEntity("/locate/{latitude}/{longitude}/", APIAirportsResponse.class, latitude, longitude)
+                    .getBody();
+        } catch (ResourceAccessException e) {
+            log.error("Error reading Airport Finder response: {}", e.getMessage());
+        } catch (HttpClientErrorException e) {
+            log.error("Http Error Airport Finder response {}: {}", e.getStatusCode(), e.getStatusText());
+        }
+        return Optional.ofNullable(airportsResponse);
+    }
 }
